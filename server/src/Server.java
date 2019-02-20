@@ -1,11 +1,14 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 
 public class Server implements Runnable {
     private String storedMessage = "You are the first visitor. Leave a message!";
     ServerSocket serverSocket;
+    ArrayList<Socket> clients;
 
     public Server(int numThreads, int portNumber) {
+        clients = new ArrayList<Socket>();
         try {
             serverSocket = new ServerSocket(portNumber);
             System.out.println("Started a server with " + numThreads + " threads on port " + portNumber);
@@ -23,13 +26,18 @@ public class Server implements Runnable {
         while (true) {
             try {
                 Socket socket = serverSocket.accept();
-                serviceRequest(socket);
-
+                clients.add(socket);
                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String input = reader.readLine();
-                if (input != null)
-                    setStoredMessage(input);
-                socket.close();
+
+                while(!socket.isClosed()) {
+
+                    String input = reader.readLine();
+                    if (input != null) {
+                        setStoredMessage(input);
+                        for (Socket s : clients)
+                            serviceRequest(s);
+                    }
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -48,7 +56,6 @@ public class Server implements Runnable {
         System.out.println("Changing the stored message to : " + newMessage);
         storedMessage = newMessage;
     }
-
 
     public static void main(String[] args) {
         new Server(3, 5000);

@@ -14,7 +14,8 @@ public class Main {
 
     private static String receive() {
         try {
-            Socket connection = new Socket("192.168.0.14", 5000);
+            Socket connection = new Socket("172.21.43.81", 5000);
+            System.out.println("connected");
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String message = reader.readLine();
             connection.close();
@@ -27,7 +28,7 @@ public class Main {
 
     public static void send(String message) {
         try {
-            Socket connection = new Socket("192.168.0.14", 5000);
+            Socket connection = new Socket("172.21.43.81", 5000);
             PrintWriter writer = new PrintWriter(connection.getOutputStream());
             writer.write(message);
             writer.close();

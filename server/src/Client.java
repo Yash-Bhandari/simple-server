@@ -2,6 +2,12 @@ import javax.swing.*;
 import javax.xml.soap.Text;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.nio.Buffer;
 
 public class Client {
     JFrame frame;
@@ -11,6 +17,7 @@ public class Client {
     TextArea display;
     TextField chatBox;
     JToolBar menu;
+    Socket connection;
 
     Client() {
         frame = new JFrame();
@@ -36,6 +43,13 @@ public class Client {
         frame.setSize(400, 400);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        try {
+            connection = new Socket("172.21.43.81", 5000);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new Thread(new ServerReader()).start();
     }
 
     private void pressedButton(Button b) {
@@ -60,6 +74,17 @@ public class Client {
         new Client();
     }
 
+    private void sendText(String s) {
+        try {
+            PrintWriter writer = new PrintWriter(connection.getOutputStream());
+            writer.println(s);
+            System.out.println("sent out message" + s);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     class ButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
@@ -72,8 +97,7 @@ public class Client {
         public void keyPressed(KeyEvent keyEvent) {
             if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
                 TextField source = (TextField)keyEvent.getSource();
-                display.append("\n" + source.getText());
-                source.setText("");
+                sendText(source.getText());
             }
         }
 
@@ -84,6 +108,22 @@ public class Client {
 
         @Override
         public void keyReleased(KeyEvent keyEvent) {
+
+        }
+    }
+
+    class ServerReader implements Runnable {
+        @Override
+        public void run() {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                while (true) {
+                    String s = reader.readLine();
+                    if (s != null)
+                        display.append("\n" + s);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
         }
     }
