@@ -13,6 +13,7 @@ public class Client {
     JFrame frame;
     Button b1, b2, b3;
     boolean[] buttonStatus = new boolean[3];
+    String name;
 
     TextArea display;
     TextField chatBox;
@@ -20,34 +21,41 @@ public class Client {
     Socket connection;
 
     Client() {
-        frame = new JFrame();
-        b1 = new Button("Press me!");
+        frame = new JFrame("Chat");
+        /*b1 = new Button("Press me!");
         b2 = new Button("Me too!");
         b3 = new Button("And me!");
         b1.addActionListener(new ButtonListener());
         b2.addActionListener(new ButtonListener());
         b3.addActionListener(new ButtonListener());
-        menu = new JToolBar();
-        display = new TextArea("the buttons have not all been pressed", 5, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
-        menu.add(BorderLayout.WEST, b1);
+        menu = new JToolBar();*/
+        display = new TextArea("", 5, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
+        display.setEditable(false);
+        /*menu.add(BorderLayout.WEST, b1);
         menu.add(BorderLayout.CENTER, b2);
         menu.add(BorderLayout.EAST, b3);
-        menu.setFloatable(false);
+        menu.setFloatable(false);*/
         chatBox = new TextField();
         chatBox.addKeyListener(new ChatBoxListener());
 
 
-        frame.getContentPane().add(BorderLayout.NORTH, menu);
+        //frame.getContentPane().add(BorderLayout.NORTH, menu);
         frame.getContentPane().add(BorderLayout.SOUTH, chatBox);
         frame.getContentPane().add(BorderLayout.CENTER, display);
         frame.setSize(400, 400);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+        //JOptionPane userNamePrompt = new JOptionPane("enter your name", JOptionPane.showInputDialog(null));
+        //JOptionPane.showMessageDialog(frame, "welcome to my chat client");
+        name = JOptionPane.showInputDialog("Enter your name");
+
         try {
-            connection = new Socket("172.21.43.81", 5000);
+            connection = new Socket("96.52.76.131", 5432);
+            display.append("Connected");
         } catch (IOException e) {
             e.printStackTrace();
+            display.append("You couldn't connect");
         }
         new Thread(new ServerReader()).start();
     }
@@ -60,7 +68,7 @@ public class Client {
         if (b.equals(b3))
             buttonStatus[2] = true;
         for (boolean bool : buttonStatus)
-            if(!bool) return;
+            if (!bool) return;
         display.setText("all the buttons have been pressed");
     }
 
@@ -71,13 +79,13 @@ public class Client {
             e.printStackTrace();
         }
         new Client();
-        new Client();
     }
 
     private void sendText(String s) {
         try {
             PrintWriter writer = new PrintWriter(connection.getOutputStream());
-            writer.println(s);
+            writer.println(name + ": " + s);
+            writer.flush();
             System.out.println("sent out message" + s);
         } catch (IOException e) {
             e.printStackTrace();
@@ -85,19 +93,14 @@ public class Client {
 
     }
 
-    class ButtonListener implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent actionEvent) {
-            pressedButton((Button) actionEvent.getSource());
-        }
-    }
-
     class ChatBoxListener implements KeyListener {
         @Override
         public void keyPressed(KeyEvent keyEvent) {
             if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
-                TextField source = (TextField)keyEvent.getSource();
-                sendText(source.getText());
+                TextField source = (TextField) keyEvent.getSource();
+                if (!source.getText().equals(""))
+                    sendText(source.getText());
+                source.setText("");
             }
         }
 
@@ -117,9 +120,7 @@ public class Client {
         public void run() {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                 while (true) {
-                    String s = reader.readLine();
-                    if (s != null)
-                        display.append("\n" + s);
+                    display.append("\n" + reader.readLine());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
