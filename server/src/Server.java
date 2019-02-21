@@ -6,7 +6,6 @@ import java.util.ArrayList;
 public class Server implements Runnable {
     ServerSocket serverSocket;
     ArrayList<Socket> clients;
-    ArrayList
 
     public Server(int numThreads, int portNumber) {
         clients = new ArrayList<Socket>();

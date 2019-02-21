@@ -1,5 +1,7 @@
+package Client;
+
 import javax.swing.*;
-import javax.xml.soap.Text;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.BufferedReader;
@@ -7,39 +9,33 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.nio.Buffer;
+import java.util.ArrayList;
 
 public class Client {
     JFrame frame;
-    Button b1, b2, b3;
-    boolean[] buttonStatus = new boolean[3];
     String name;
+    ArrayList<String> joinedUsers;
 
-    TextArea display;
-    TextField chatBox;
-    JToolBar menu;
+    JTextArea display;
+    JoinedUsersDisplay users;
+    JTextField chatBox;
     Socket connection;
 
     Client() {
+        joinedUsers = new ArrayList<String>();
         frame = new JFrame("Chat");
-        /*b1 = new Button("Press me!");
-        b2 = new Button("Me too!");
-        b3 = new Button("And me!");
-        b1.addActionListener(new ButtonListener());
-        b2.addActionListener(new ButtonListener());
-        b3.addActionListener(new ButtonListener());
-        menu = new JToolBar();*/
-        display = new TextArea("", 5, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
+        display = new JTextArea();
         display.setEditable(false);
-        /*menu.add(BorderLayout.WEST, b1);
-        menu.add(BorderLayout.CENTER, b2);
-        menu.add(BorderLayout.EAST, b3);
-        menu.setFloatable(false);*/
-        chatBox = new TextField();
+        users = new JoinedUsersDisplay();
+        users.addUser("Yash");
+        users.addUser("Andrew");
+
+        chatBox = new JTextField();
         chatBox.addKeyListener(new ChatBoxListener());
 
 
         //frame.getContentPane().add(BorderLayout.NORTH, menu);
+        frame.getContentPane().add(BorderLayout.EAST, users);
         frame.getContentPane().add(BorderLayout.SOUTH, chatBox);
         frame.getContentPane().add(BorderLayout.CENTER, display);
         frame.setSize(400, 400);
@@ -60,17 +56,6 @@ public class Client {
         new Thread(new ServerReader()).start();
     }
 
-    private void pressedButton(Button b) {
-        if (b.equals(b1))
-            buttonStatus[0] = true;
-        if (b.equals(b2))
-            buttonStatus[1] = true;
-        if (b.equals(b3))
-            buttonStatus[2] = true;
-        for (boolean bool : buttonStatus)
-            if (!bool) return;
-        display.setText("all the buttons have been pressed");
-    }
 
     public static void main(String[] args) {
         try {
@@ -93,11 +78,28 @@ public class Client {
 
     }
 
+    private void addUser(String name) {
+        name = name.trim();
+        for (String s : joinedUsers)
+            if (s.equals(name)) {
+                addUser(name + "I");
+                break;
+            }
+        joinedUsers.add(name);
+    }
+
+    private void handleInput(String s) {
+        if (s.substring(0, 4).equals("meta")) {
+            if (s.substring(5, 7).equals("uj")) // user joined
+                joinedUsers.add(s.substring(7));
+        }
+    }
+
     class ChatBoxListener implements KeyListener {
         @Override
         public void keyPressed(KeyEvent keyEvent) {
             if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
-                TextField source = (TextField) keyEvent.getSource();
+                JTextField source = (JTextField) keyEvent.getSource();
                 if (!source.getText().equals(""))
                     sendText(source.getText());
                 source.setText("");
