@@ -7,6 +7,7 @@ import Packets.UserListPacket;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -17,7 +18,9 @@ public class Client {
     JFrame frame;
     String name;
 
-    JTextArea display;
+
+    JTextPane display;
+    StyledDocument chatDoc;
     JoinedUsersDisplay users;
     JTextField chatBox;
     Socket connection;
@@ -25,10 +28,11 @@ public class Client {
 
     public Client() {
         frame = new JFrame("Chat");
-        display = new JTextArea();
+        display = new JTextPane();
         display.setEditable(false);
+        chatDoc = display.getStyledDocument();
+        setStyles(chatDoc);
         users = new JoinedUsersDisplay();
-
         chatBox = new JTextField();
         chatBox.addKeyListener(new ChatBoxListener());
 
@@ -49,13 +53,19 @@ public class Client {
         try {
             connection = new Socket("96.52.76.131", 5432);
             packetWriter = new ObjectOutputStream(connection.getOutputStream());
-            display.append("Connected");
+            try {
+                chatDoc.insertString(chatDoc.getLength(), "Connected", chatDoc.getStyle("server"));
+            } catch (BadLocationException e1) {
+            }
             new Thread(new ServerReader()).start();
             name = getName();
             new JoinPacket(name).send(packetWriter);
         } catch (IOException e) {
             e.printStackTrace();
-            display.append("You couldn't connect");
+            try {
+                chatDoc.insertString(chatDoc.getLength(), "You couldn't connect", chatDoc.getStyle("server"));
+            } catch (BadLocationException e1) {
+            }
         }
     }
 
@@ -67,6 +77,15 @@ public class Client {
             e.printStackTrace();
         }
         new Client();
+    }
+
+    private void setStyles(StyledDocument document) {
+        document.addStyle("server", null);
+        StyleConstants.setForeground(document.getStyle("server"), Color.BLUE);
+        StyleConstants.setItalic(document.getStyle("server"), true);
+
+        document.addStyle("name", null);
+        StyleConstants.setBold(document.getStyle("name"), true);
     }
 
 
@@ -93,7 +112,7 @@ public class Client {
         if (p instanceof UserListPacket)
             handleUserListPacket((UserListPacket) p);
         if (p instanceof MessagePacket)
-            handleMessagePacket((MessagePacket)p);
+            handleMessagePacket((MessagePacket) p);
 
     }
 
@@ -102,7 +121,12 @@ public class Client {
     }
 
     private void handleMessagePacket(MessagePacket mp) {
-        display.append("\n" + mp.getComposite());
+        try {
+            chatDoc.insertString(chatDoc.getLength(), "\n" + mp.getSenderName() + " : ", chatDoc.getStyle("name"));
+            chatDoc.insertString(chatDoc.getLength(), mp.getMessage(), null);
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        }
     }
 
     class ChatBoxListener implements KeyListener {
@@ -133,7 +157,7 @@ public class Client {
             try {
                 ObjectInputStream packetReader = new ObjectInputStream(connection.getInputStream());
                 while (true) {
-                    handlePacket((Packet)packetReader.readObject());
+                    handlePacket((Packet) packetReader.readObject());
                 }
             } catch (Exception e) {
                 e.printStackTrace();
