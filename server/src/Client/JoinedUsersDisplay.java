@@ -23,8 +23,9 @@ class JoinedUsersDisplay extends JPanel {
 
     void updateUserList(Collection<String> newUserList){
         userList.clear();
-        for(String s : newUserList)
+        for(String s : newUserList) {
             userList.addElement(s);
+        }
     }
 
 

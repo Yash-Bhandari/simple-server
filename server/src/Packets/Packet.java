@@ -20,12 +20,7 @@ public class Packet implements Serializable {
         return type;
     }
 
-    public void send(OutputStream os) throws IOException {
-        new ObjectOutputStream(os).writeObject(this);
-    }
-
-    public static void main(String[] args) {
-        ArrayList b = new ArrayList();
-        b.remove(-1 );
+    public void send(ObjectOutputStream oos) throws IOException {
+        oos.writeObject(this);
     }
 }

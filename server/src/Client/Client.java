@@ -1,6 +1,7 @@
 package Client;
 
 import Packets.JoinPacket;
+import Packets.MessagePacket;
 import Packets.Packet;
 import Packets.UserListPacket;
 
@@ -20,8 +21,9 @@ public class Client {
     JoinedUsersDisplay users;
     JTextField chatBox;
     Socket connection;
+    ObjectOutputStream packetWriter;
 
-    Client() {
+    public Client() {
         frame = new JFrame("Chat");
         display = new JTextArea();
         display.setEditable(false);
@@ -46,10 +48,11 @@ public class Client {
 
         try {
             connection = new Socket("96.52.76.131", 5432);
+            packetWriter = new ObjectOutputStream(connection.getOutputStream());
             display.append("Connected");
             new Thread(new ServerReader()).start();
             name = getName();
-            new JoinPacket(name).send(connection.getOutputStream());
+            new JoinPacket(name).send(packetWriter);
         } catch (IOException e) {
             e.printStackTrace();
             display.append("You couldn't connect");
@@ -67,13 +70,9 @@ public class Client {
     }
 
 
-    private void sendText(boolean isChatMessage, String message) {
+    private void sendText(String message) {
         try {
-            PrintWriter writer = new PrintWriter(connection.getOutputStream());
-            if (isChatMessage) writer.println(name + ": " + message);
-            else writer.println("meta-" + message);
-            writer.flush();
-            System.out.println("sent out message : " + message);
+            new MessagePacket(name, message).send(packetWriter);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -93,10 +92,17 @@ public class Client {
     private void handlePacket(Packet p) {
         if (p instanceof UserListPacket)
             handleUserListPacket((UserListPacket) p);
+        if (p instanceof MessagePacket)
+            handleMessagePacket((MessagePacket)p);
+
     }
 
     private void handleUserListPacket(UserListPacket p) {
         users.updateUserList(p.getNewUserList());
+    }
+
+    private void handleMessagePacket(MessagePacket mp) {
+        display.append("\n" + mp.getComposite());
     }
 
     class ChatBoxListener implements KeyListener {
@@ -105,7 +111,7 @@ public class Client {
             if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
                 JTextField source = (JTextField) keyEvent.getSource();
                 if (!source.getText().equals(""))
-                    sendText(true, source.getText());
+                    sendText(source.getText());
                 source.setText("");
             }
         }
@@ -125,12 +131,13 @@ public class Client {
         @Override
         public void run() {
             try {
-                ObjectInputStream objectReader = new ObjectInputStream(connection.getInputStream());
+                ObjectInputStream packetReader = new ObjectInputStream(connection.getInputStream());
                 while (true) {
-                    handlePacket((Packet)objectReader.readObject());
+                    handlePacket((Packet)packetReader.readObject());
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                System.exit(0);
             }
 
         }

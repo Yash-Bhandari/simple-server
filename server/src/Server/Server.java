@@ -1,6 +1,7 @@
 package Server;
 
 import Packets.JoinPacket;
+import Packets.MessagePacket;
 import Packets.Packet;
 import Packets.UserListPacket;
 import com.sun.corba.se.impl.orbutil.ObjectWriter;
@@ -13,11 +14,11 @@ import java.util.ArrayList;
 
 public class Server implements Runnable, Serializable {
     ServerSocket serverSocket;
-    ArrayList<Socket> clients;
+    ArrayList<ObjectOutputStream> clients;
     ArrayList<String> clientNames;
 
     public Server(int numThreads, int portNumber) {
-        clients = new ArrayList<Socket>();
+        clients = new ArrayList<ObjectOutputStream>();
         clientNames = new ArrayList<String>();
         try {
             serverSocket = new ServerSocket(portNumber);
@@ -38,14 +39,15 @@ public class Server implements Runnable, Serializable {
             try {
                 Socket socket = serverSocket.accept();
                 System.out.println("connected to " + socket.getInetAddress());
-                clients.add(socket);
                 ObjectInputStream packetReader = new ObjectInputStream(socket.getInputStream());
+                ObjectOutputStream packetWriter = new ObjectOutputStream(socket.getOutputStream());
+                clients.add(packetWriter);
 
                 while (!socket.isClosed()) {
                     try {
                         handlePacket((Packet) packetReader.readObject());
                     } catch (SocketException e) {
-                        closeSocket(socket);
+                        closeSocket(packetWriter);
                     }
                 }
             } catch (Exception e) {
@@ -54,19 +56,25 @@ public class Server implements Runnable, Serializable {
         }
     }
 
-    private void closeSocket(Socket socket) {
+    private void closeSocket(ObjectOutputStream oos) {
+        System.out.println("closing");
+        int index = clients.indexOf(oos);
+        if (index >= 0)
+            clientNames.remove(index);
+        clients.remove(oos);
         try {
-            socket.close();
-            clientNames.remove(clients.indexOf(socket));
-            clients.remove(socket);
+            oos.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        sendAll(new UserListPacket(clientNames));
     }
 
     private void handlePacket(Packet p) {
         if (p instanceof JoinPacket)
             handleJoinPacket((JoinPacket) p);
+        else if (p instanceof MessagePacket)
+            handleMessagePacket((MessagePacket) p);
     }
 
     private void handleJoinPacket(JoinPacket jp) {
@@ -74,12 +82,19 @@ public class Server implements Runnable, Serializable {
         sendAll(new UserListPacket(clientNames));
     }
 
+    private void handleMessagePacket(MessagePacket mp) {
+        sendAll(new UserListPacket(clientNames));
+        sendAll(mp);
+    }
+
+
     private void sendAll(Packet p) {
-        for (Socket s : clients) {
+        for (ObjectOutputStream oos : clients) {
             try {
-                p.send(s.getOutputStream());
+                p.send(oos);
+                oos.reset();
             } catch (IOException e) {
-                closeSocket(s);
+                closeSocket(oos);
             }
         }
     }
@@ -92,7 +107,7 @@ public class Server implements Runnable, Serializable {
     }
 
     public static void main(String[] args) {
-        new Server(3, 5432);
+        new Server(20, 5432);
     }
 
 }
