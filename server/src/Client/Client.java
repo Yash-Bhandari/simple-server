@@ -1,20 +1,20 @@
 package Client;
 
+import Packets.JoinPacket;
+import Packets.Packet;
+import Packets.UserListPacket;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 
 public class Client {
     JFrame frame;
     String name;
-    ArrayList<String> joinedUsers;
 
     JTextArea display;
     JoinedUsersDisplay users;
@@ -22,38 +22,38 @@ public class Client {
     Socket connection;
 
     Client() {
-        joinedUsers = new ArrayList<String>();
         frame = new JFrame("Chat");
         display = new JTextArea();
         display.setEditable(false);
         users = new JoinedUsersDisplay();
-        users.addUser("Yash");
-        users.addUser("Andrew");
 
         chatBox = new JTextField();
         chatBox.addKeyListener(new ChatBoxListener());
 
 
+        JScrollPane chatDisplay = new JScrollPane(display);
+        chatDisplay.setBorder(BorderFactory.createEmptyBorder());
         //frame.getContentPane().add(BorderLayout.NORTH, menu);
         frame.getContentPane().add(BorderLayout.EAST, users);
         frame.getContentPane().add(BorderLayout.SOUTH, chatBox);
-        frame.getContentPane().add(BorderLayout.CENTER, display);
+        frame.getContentPane().add(BorderLayout.CENTER, chatDisplay);
         frame.setSize(400, 400);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //JOptionPane userNamePrompt = new JOptionPane("enter your name", JOptionPane.showInputDialog(null));
         //JOptionPane.showMessageDialog(frame, "welcome to my chat client");
-        name = JOptionPane.showInputDialog("Enter your name");
 
         try {
             connection = new Socket("96.52.76.131", 5432);
             display.append("Connected");
+            new Thread(new ServerReader()).start();
+            name = getName();
+            new JoinPacket(name).send(connection.getOutputStream());
         } catch (IOException e) {
             e.printStackTrace();
             display.append("You couldn't connect");
         }
-        new Thread(new ServerReader()).start();
     }
 
 
@@ -66,33 +66,37 @@ public class Client {
         new Client();
     }
 
-    private void sendText(String s) {
+
+    private void sendText(boolean isChatMessage, String message) {
         try {
             PrintWriter writer = new PrintWriter(connection.getOutputStream());
-            writer.println(name + ": " + s);
+            if (isChatMessage) writer.println(name + ": " + message);
+            else writer.println("meta-" + message);
             writer.flush();
-            System.out.println("sent out message" + s);
+            System.out.println("sent out message : " + message);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    private void addUser(String name) {
-        name = name.trim();
-        for (String s : joinedUsers)
-            if (s.equals(name)) {
-                addUser(name + "I");
-                break;
-            }
-        joinedUsers.add(name);
+    private String getName() {
+        String[] options = {"OK"};
+        JPanel modal = new JPanel();
+        JTextField input = new JTextField(15);
+        modal.add(new JLabel("Choose a name"), -1);
+        modal.add(input, -1);
+        JOptionPane.showOptionDialog(frame, modal, "Choose a name", JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+        return input.getText();
     }
 
-    private void handleInput(String s) {
-        if (s.substring(0, 4).equals("meta")) {
-            if (s.substring(5, 7).equals("uj")) // user joined
-                joinedUsers.add(s.substring(7));
-        }
+    private void handlePacket(Packet p) {
+        if (p instanceof UserListPacket)
+            handleUserListPacket((UserListPacket) p);
+    }
+
+    private void handleUserListPacket(UserListPacket p) {
+        users.updateUserList(p.getNewUserList());
     }
 
     class ChatBoxListener implements KeyListener {
@@ -101,7 +105,7 @@ public class Client {
             if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
                 JTextField source = (JTextField) keyEvent.getSource();
                 if (!source.getText().equals(""))
-                    sendText(source.getText());
+                    sendText(true, source.getText());
                 source.setText("");
             }
         }
@@ -120,11 +124,12 @@ public class Client {
     class ServerReader implements Runnable {
         @Override
         public void run() {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            try {
+                ObjectInputStream objectReader = new ObjectInputStream(connection.getInputStream());
                 while (true) {
-                    display.append("\n" + reader.readLine());
+                    handlePacket((Packet)objectReader.readObject());
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 

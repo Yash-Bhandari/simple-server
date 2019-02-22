@@ -1,8 +1,10 @@
 package Client;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collection;
 
 class JoinedUsersDisplay extends JPanel {
     private JLabel boxLabel;
@@ -11,12 +13,20 @@ class JoinedUsersDisplay extends JPanel {
 
 
     JoinedUsersDisplay() {
+        setLayout(new BorderLayout());
         boxLabel = new JLabel("Online Users");
         userList = new DefaultListModel();
         users = new JList(userList);
-        add(boxLabel, BorderLayout.NORTH);
-        add(users, BorderLayout.SOUTH);
+        add(BorderLayout.NORTH, boxLabel);
+        add(BorderLayout.CENTER, users);
     }
+
+    void updateUserList(Collection<String> newUserList){
+        userList.clear();
+        for(String s : newUserList)
+            userList.addElement(s);
+    }
+
 
     void addUser(String name) {
         name = name.trim();
@@ -34,7 +44,4 @@ class JoinedUsersDisplay extends JPanel {
         return false;
     }
 
-    private void update() {
-
-    }
 }
