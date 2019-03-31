@@ -30,7 +30,7 @@ public class Client {
             packetWriter = new ObjectOutputStream(connection.getOutputStream());
             cd.displayMessage("Server", "Connected");
             new Thread(new ServerReader()).start();
-            String name = cd.getName();
+            name = cd.getName();
             new JoinPacket(name).send(packetWriter);
         } catch (IOException e) {
             e.printStackTrace();

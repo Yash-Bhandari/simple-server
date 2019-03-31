@@ -16,6 +16,7 @@ public class ClientDisplay {
     StyledDocument chatDoc;
     JoinedUsersDisplay users;
     JTextField chatBox;
+    String name;
 
 
     public ClientDisplay(Client client) {
@@ -26,6 +27,7 @@ public class ClientDisplay {
         chatDoc = display.getStyledDocument();
         setStyles(chatDoc);
         users = new JoinedUsersDisplay();
+        chatBox = new JTextField();
         chatBox.addKeyListener(new ChatBoxListener());
 
 
@@ -45,8 +47,8 @@ public class ClientDisplay {
 
     public void displayMessage(String sender, String message) {
         try {
-            chatDoc.insertString(chatDoc.getLength(), "\n" + sender + " : ", chatDoc.getStyle("name"));
-            chatDoc.insertString(chatDoc.getLength(), message, null);
+            chatDoc.insertString(chatDoc.getLength(), sender + " : ", chatDoc.getStyle("name"));
+            chatDoc.insertString(chatDoc.getLength(), message + "\n", chatDoc.getStyle("default"));
         } catch (BadLocationException e) {
             e.printStackTrace();
         }
@@ -60,12 +62,14 @@ public class ClientDisplay {
         modal.add(new JLabel("Choose a name"), -1);
         modal.add(input, -1);
         JOptionPane.showOptionDialog(frame, modal, "Choose a name", JOptionPane.NO_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
-        return input.getText();
+        name = input.getText();
+        System.out.println(name);
+        return name;
     }
 
     private void setStyles(StyledDocument document) {
         document.addStyle("default", null);
-        StyleConstants.setFontSize(document.getStyle("default"), 20);
+        StyleConstants.setFontSize(document.getStyle("default"), 12);
 
         document.addStyle("server", document.getStyle("default"));
         StyleConstants.setForeground(document.getStyle("server"), Color.BLUE);
